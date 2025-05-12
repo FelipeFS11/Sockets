@@ -17,8 +17,6 @@ Este é um projeto de chat em grupo e mensagens privadas usando **sockets**, com
 Todas as mensagens são criptografadas com uma chave Fernet trocada no momento da conexão com o servidor. O conteúdo transmitido não pode ser lido por terceiros.
 
 ## 🧱 Estrutura
-
-chat/
 ├── server.py # Código do servidor com suporte a múltiplos clientes
 ├── client.py # Cliente com interface gráfica e criptografia
 ├── README.md # Este arquivo
