@@ -2,6 +2,7 @@ import socket
 import threading
 import tkinter as tk
 from tkinter import ttk, simpledialog, scrolledtext, messagebox
+from cryptography.fernet import Fernet
 
 class ChatClient:
     def __init__(self, master):
@@ -19,7 +20,9 @@ class ChatClient:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             self.socket.connect(("localhost", 12345))
-            self.socket.send(self.username.encode())
+            key = self.socket.recv(1024)
+            self.fernet = Fernet(key)
+            self.socket.send(self.fernet.encrypt(self.username.encode()))
         except Exception as e:
             messagebox.showerror("Erro", f"Não foi possível conectar: {e}")
             master.quit()
@@ -37,11 +40,9 @@ class ChatClient:
 
         self.running = True
         threading.Thread(target=self.receive_messages, daemon=True).start()
+
     def insert_emoji(self, entry_widget):
-        # Emojis populares - você pode personalizar ou expandir
         emojis = ["😀", "😂", "😍", "😎", "😭", "😡", "👍", "🎉", "❤️", "🔥"]
-    
-        # Nova janela flutuante
         emoji_win = tk.Toplevel(self.master)
         emoji_win.title("Escolha um emoji")
         emoji_win.geometry("200x150")
@@ -77,9 +78,11 @@ class ChatClient:
             else:
                 full_msg = f"/msg {tab_name} {msg}"
             try:
-                self.socket.send(full_msg.encode())
+                self.socket.send(self.fernet.encrypt(full_msg.encode()))
                 if tab_name != "Geral":
                     self.display_message(f"Você (para {tab_name}): {msg}", tab_name)
+                else:
+                    self.display_message(f"Você: {msg}", tab_name)
                 entry.delete(0, tk.END)
             except:
                 self.display_message("Erro ao enviar mensagem.", tab_name)
@@ -87,13 +90,13 @@ class ChatClient:
     def receive_messages(self):
         while self.running:
             try:
-                msg = self.socket.recv(1024).decode()
-                if msg:
-                    if msg.startswith("[PM de "):
-                        user = msg.split(" ")[2].strip("]:")
-                        self.display_message(msg, user)
-                    else:
-                        self.display_message(msg, "Geral")
+                encrypted_msg = self.socket.recv(1024)
+                msg = self.fernet.decrypt(encrypted_msg).decode()
+                if msg.startswith("[PM de "):
+                    user = msg.split(" ")[2].strip("]:")
+                    self.display_message(msg, user)
+                else:
+                    self.display_message(msg, "Geral")
             except:
                 self.display_message("Desconectado do servidor.", "Geral")
                 break

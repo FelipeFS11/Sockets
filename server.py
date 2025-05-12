@@ -1,7 +1,9 @@
 import socket
 import threading
+from cryptography.fernet import Fernet
 
 clients = {}
+keys = {}
 lock = threading.Lock()
 
 def broadcast(message, sender_socket=None):
@@ -9,26 +11,41 @@ def broadcast(message, sender_socket=None):
         for client, name in clients.items():
             if client != sender_socket:
                 try:
-                    client.send(message.encode())
+                    encrypted_msg = keys[client].encrypt(message.encode())
+                    client.send(encrypted_msg)
                 except:
                     client.close()
                     del clients[client]
+                    del keys[client]
 
 def handle_client(client_socket):
     try:
-        username = client_socket.recv(1024).decode()
+        # Gerar e enviar chave Fernet
+        key = Fernet.generate_key()
+        fernet = Fernet(key)
+        client_socket.send(key)
+
+        # Receber nome de usuário criptografado
+        encrypted_username = client_socket.recv(1024)
+        username = fernet.decrypt(encrypted_username).decode()
+
         with lock:
             clients[client_socket] = username
+            keys[client_socket] = fernet
+
         broadcast(f"{username} entrou no chat.", client_socket)
 
         while True:
-            msg = client_socket.recv(1024).decode()
+            encrypted_msg = client_socket.recv(1024)
+            msg = fernet.decrypt(encrypted_msg).decode()
+
             if msg.startswith("/msg "):
                 target_name, _, private_msg = msg[5:].partition(" ")
                 with lock:
                     for c, n in clients.items():
                         if n == target_name:
-                            c.send(f"[PM de {username}]: {private_msg}".encode())
+                            private_encrypted = keys[c].encrypt(f"[PM de {username}]: {private_msg}".encode())
+                            c.send(private_encrypted)
                             break
             else:
                 broadcast(f"{username}: {msg}", client_socket)
@@ -38,6 +55,7 @@ def handle_client(client_socket):
         with lock:
             name = clients.get(client_socket, "Desconhecido")
             del clients[client_socket]
+            del keys[client_socket]
         broadcast(f"{name} saiu do chat.")
         client_socket.close()
 
