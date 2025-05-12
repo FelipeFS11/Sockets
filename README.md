@@ -1,4 +1,3 @@
-#﻿# Sockets
 ## 💬 Chat Seguro com Interface Gráfica em Python
 
 Este é um projeto de chat em grupo e mensagens privadas usando **sockets**, com interface gráfica em **Tkinter**, **suporte a emojis**, e **criptografia com Fernet (symmetric key encryption)**.
