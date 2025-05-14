@@ -32,7 +32,7 @@ pip install cryptography
 ## Como executar
 1. Inicie o servidor
 python server.py
-2. Execute o cliente (em outra aba ou outro computador na mesma rede)
+2. Execute o cliente (em outra aba)
 python client.py
 
 ## Exemplo de mensagem privada
